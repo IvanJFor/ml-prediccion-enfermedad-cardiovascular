@@ -37,9 +37,9 @@ Variable objetivo:
    - Imputación de valores nulos  
    - Eliminación de registros duplicados  
 3. Detección y eliminación de **outliers** mediante IQR  
-4. Selección de variables relevantes (`age`, `sex`, `chol`)  
-5. Escalado de variables numéricas para **Regresión Logística**  
-6. División del dataset (80% entrenamiento / 20% prueba)  
+4. Selección de variables relevantes (`age`, `sex`, `chol`)    
+5. División del dataset (80% entrenamiento / 20% prueba)  
+6. Escalado de variables numéricas para **Regresión Logística**
 7. Entrenamiento de modelos  
 8. Optimización de hiperparámetros con **GridSearchCV**  
 9. Evaluación del rendimiento  
@@ -52,7 +52,7 @@ Variable objetivo:
 | Modelo | Precisión |
 |--------|-----------|
 | Regresión Logística | **0.7368** |
-| Random Forest | 0.598 |
+| Random Forest | 0.603 |
 
 La **Regresión Logística** obtuvo mejor rendimiento en este dataset.
 

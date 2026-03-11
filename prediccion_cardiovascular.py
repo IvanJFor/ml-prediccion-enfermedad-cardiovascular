@@ -22,7 +22,7 @@ from sklearn.ensemble import RandomForestClassifier
 print('\n-- CARGA, ANÁLISIS Y PREPARACIÓN DE LOS DATOS --')
 
 # Se cargan los datos desde un CSV y se convierten a un DataFrame
-df = pd.read_csv('heart_modified.csv')
+df = pd.read_csv('data/heart_modified.csv')
 
 # Se estudia el contenido del DataFrame por pantalla
 print('\nDataFrame:')
@@ -83,7 +83,7 @@ else:
     print('\nNo quedan filas duplicadas:', df.shape)
 
 
-# -- 4. REDUCCIÓN DATAFRAME --
+# -- 3. REDUCCIÓN DATAFRAME --
 
 # Se reduce el DataFrame a las columnas útiles
 print('\nSe reduce el DataFrame a las columnas útiles [edad, sexo, colesterol y resultado]')
@@ -92,7 +92,7 @@ print('\nDataFrame Reducido:\n')
 print(df)
 
 
-# -- 3. OUTLIERS --
+# -- 4. OUTLIERS --
 
 # Se escogen las columnas numéricas para realizar la búsqueda de Outliers
 col_numericas = df.select_dtypes(include="number").columns
@@ -144,31 +144,38 @@ print('\nDataFrame final:')
 print(df)
 
 
-# -- 4 SEPARACIÓN DE CARACTERÍSTICAS Y ETIQUETAS --
-# Lo normal sería hacerlo después del escalado, pero de esta manera optimizamos al descartarlos antes
+# -- 5. SEPARACIÓN DE CARACTERÍSTICAS Y OBJETIVOS --
 
 # Se identifican las variables independientes (X) y dependientes (y)
 X = df[['age', 'sex', 'chol']]
 y = df['output']
 
 
-# -- 5. ESCALADO DE DATOS NUMÉRICOS --
+# -- 6. DIVISIÓN DEL CONJUNTO DE DATOS --
+
+# Se dividen los datos en entrenamiento y prueba
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+# stratify=y se usa para mantener la proporción de la columna y si no estuviera bien balanceada
+
+
+# -- 7. ESCALADO DE DATOS NUMÉRICOS --
 
 # (Para que la diferencia de rango entre ellas no les otorgue más peso a unas que a otras)
 print('\nEscalado de datos...')
 scaler = StandardScaler()
-X_scaled = X.copy()
-X_scaled[['age', 'chol']] = scaler.fit_transform(X_scaled[['age', 'chol']])
+
+# El escalado y ajuste (fit_transform) se realiza solo con los datos de entrenamiento para que no haya fuga de datos del test
+X_train_scaled = X_train.copy()
+X_train_scaled[['age', 'chol']] = scaler.fit_transform(X_train_scaled[['age', 'chol']])
+
+# Y el escalado sin el ajuste se hace también al conjunto de test (transform)
+X_test_scaled = X_test.copy()
+X_test_scaled[['age', 'chol']] = scaler.transform(X_test_scaled[['age', 'chol']])
+
+# La variable objetivo no se escala en clasificación
 
 
-# -- 6 DIVISIÓN DEL CONJUNTO DE DATOS --
-
-# Se dividen los datos en entrenamiento y prueba
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
-# stratify=y se usa para mantener la proporción de la columna y si no estuviera bien balanceada
-
-
-# -- 7. REGRESIÓN LOGÍSTICA --
+# -- 8. REGRESIÓN LOGÍSTICA --
 
 print('\n--- MODELO DE REGRESIÓN LOGÍSTICA ---')
 print('\nEspere por favor...')
@@ -177,18 +184,19 @@ print('\nEspere por favor...')
 modelo_RL = LogisticRegression(max_iter=1000, random_state=42)
 
 # Se aplica evaluación por Validación Cruzada
-scores_log = cross_val_score(modelo_RL, X_train, y_train, cv=5, scoring='accuracy', n_jobs=-1)
-print(f'\nRegresión Logística Precisión Validación Cruzada: {scores_log.mean():.3f} + {scores_log.std()}')
+scores_log = cross_val_score(modelo_RL, X_train_scaled, y_train, cv=5, scoring='accuracy', n_jobs=-1)
+print(f'\nRegresión Logística CV: {scores_log.mean():.3f} + {scores_log.std():.3f}')
 
-# Ajuste final y test
-modelo_RL.fit(X_train, y_train)
-y_pred_RL = modelo_RL.predict(X_test)
+# Ajuste final y test con los datos escalados
+modelo_RL.fit(X_train_scaled, y_train)
+y_pred_RL = modelo_RL.predict(X_test_scaled)
 precision_RL = accuracy_score(y_test, y_pred_RL)
 
 # Se muestran los resultados
 print(f'\nRegresión Logística Precisión Test: {precision_RL:.4f}')
 
-# -- 8. RANDOM FOREST --
+
+# -- 9. RANDOM FOREST --
 
 print('\n--- MODELO DE RANDOM FOREST ---')
 print('\nEspere por favor...')
@@ -204,18 +212,19 @@ param_grid_RF = {
     'min_samples_leaf': [1, 2]
 }
 
-# Se entrena el modelo (no haría falta usar las variables escaladas, pero tampoco influye que lo estén)
-#modelo_RF.fit(X_train, y_train) # se podría omitir porque GridSearchCV ya entrena también
+# Se entrena el modelo pero en este caso se omite porque GridSearchCV ya entrena también
+#modelo_RF.fit(X_train_scaled, y_train) # (de hacerlo no haría falta usar las variables escaladas, pero tampoco influye que lo estén)
 
 # Búsqueda de hiperparámetros con validación cruzada
 grid_RF = GridSearchCV(modelo_RF, param_grid_RF, cv=5, n_jobs=-1, scoring='accuracy')
-grid_RF.fit(X_train, y_train)
+grid_RF.fit(X_train_scaled, y_train)
 
 # Se evalúa el modelo
-print("Mejores parámetros RF:", grid_RF.best_params_)
-print(f"Random Forest Validación Cruzada Mejor Puntuación: {grid_RF.best_score_:.3f}")
+print("\nMejores parámetros RF:", grid_RF.best_params_)
+print(f"\nRandom Forest CV Mejor Puntuación: {grid_RF.best_score_:.3f}")
 
-# -- 9. EVALUACIÓN DE LOS MODELOS --
+
+# -- 10. EVALUACIÓN DE LOS MODELOS --
 
 print('\nEvaluación de los modelos...\n')
 
@@ -227,14 +236,17 @@ print(f"Random Forest Precisión Test: {precision_RF:.4f}")
 
 # Comparación del mejor modelo
 if precision_RL > precision_RF:
-    print('\nEl mejor modelo es Regresión Logística con una precisión de:', precision_RL )
     mejor_modelo = modelo_RL
+    print(f"\nEl mejor modelo es Regresión Logística con una precisión de: {precision_RL:.4f}")
 elif precision_RL < precision_RF:
-    print('\nEl mejor modelo es Random Forest con una precisión de:', precision_RF)
-    mejor_modelo = best_RF # modelo optimizado
+    mejor_modelo = best_RF  # modelo optimizado
+    print(f"\nEl mejor modelo es Random Forest con una precisión de: {precision_RF:.4f}")
 else:
-    print('\nAmbos modelos tienen la misma precisión:', precision_RF)
-    mejor_modelo = best_RF
+    mejor_modelo = modelo_RL
+    print(f"\nAmbos modelos tienen la misma precisión: {precision_RF:.4f}")
+
+
+# -- 11. COMPROBACIÓN CON NUEVOS DATOS --
 
 # Se prueba el modelo con datos solicitados al usuario
 print('\n--- SIMULACIÓN CON NUEVOS DATOS ---\n')
