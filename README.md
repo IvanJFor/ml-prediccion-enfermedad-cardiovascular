@@ -70,14 +70,14 @@ El script entrenará los modelos y permitirá introducir nuevos datos para reali
 
 ## Ejemplo de entrada
 ```
-Edad: 55
-Sexo: M
-Colesterol: 220
+Edad: 44
+Sexo: F
+Colesterol: 210
 ```
 ## Ejemplo de salida
 ```
 Predicción: Paciente tiene enfermedad cardiovascular
-Probabilidad: 0.73
+Probabilidad: 0.67
 ```
 
 ---
